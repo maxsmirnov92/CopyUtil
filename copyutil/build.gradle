@@ -4,5 +4,14 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'net.maxsmr.copyutil.CopyUtil'
+        )
+    }
+}
+
 sourceCompatibility = "1.8"
 targetCompatibility = "1.8"

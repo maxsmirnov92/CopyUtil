@@ -1,7 +1,5 @@
 package net.maxsmr.copyutil;
 
-import com.sun.org.apache.bcel.internal.generic.FADD;
-
 import net.maxsmr.copyutil.utils.FileHelper;
 import net.maxsmr.copyutil.utils.TextUtils;
 import net.maxsmr.copyutil.utils.logger.BaseLogger;
@@ -64,14 +62,21 @@ public class CopyUtil {
             }
         }
 
+        boolean allowDeleteEmptyDirs = false;
+
+        if (args.length >= 5) {
+            try {
+                allowDeleteEmptyDirs = Boolean.parseBoolean(args[4]);
+            } catch (Exception ignored) {
+            }
+        }
+
         boolean allowDeleteCopiedFiles = false;
 
-        if (!allowRenameFiles) {
-            if (args.length >= 5) {
-                try {
-                    allowDeleteCopiedFiles = Boolean.parseBoolean(args[4]);
-                } catch (Exception ignored) {
-                }
+        if (args.length >= 6) {
+            try {
+                allowDeleteCopiedFiles = Boolean.parseBoolean(args[5]);
+            } catch (Exception ignored) {
             }
         }
 
@@ -88,7 +93,7 @@ public class CopyUtil {
 
                 if (allowRenameFiles) {
                     logger.i("Renaming " + sourcePathToCopy + " to " + destinationPath.getAbsolutePath() + File.separator + relativePath + "...");
-                    if (FileHelper.renameTo(sourcePathToCopy, destinationPath.getAbsolutePath(), relativePath, true) != null) {
+                    if (FileHelper.renameTo(sourcePathToCopy, destinationPath.getAbsolutePath(), relativePath, true, allowDeleteEmptyDirs) != null) {
                         logger.i("File " + sourcePathToCopy + " renamed successfully to " + destinationPath.getAbsolutePath() + File.separator + relativePath);
                         tryToCopy = false;
                     } else {
@@ -101,9 +106,9 @@ public class CopyUtil {
                     if (FileHelper.copyFile(sourcePathToCopy, relativePath, destinationPath.getAbsolutePath(), true, true) != null) {
                         logger.i("File " + sourcePathToCopy + " copied successfully to " + destinationPath.getAbsolutePath() + File.separator + relativePath);
                         if (allowDeleteCopiedFiles) {
-                            logger.i("Deleting " + sourcePathToCopy + "...");
+                            logger.i("Deleting copied file " + sourcePathToCopy + "...");
                             if (!FileHelper.deleteFile(sourcePathToCopy)) {
-                                logger.e("Delete file " + sourcePathToCopy + " failed!");
+                                logger.e("Delete copied file " + sourcePathToCopy + " failed!");
                             }
                         }
                     } else {
@@ -121,7 +126,7 @@ public class CopyUtil {
                     for (File f : filesToRename) {
                         String targetDir = new File(destinationPath, f.getParent().replaceFirst(TextUtils.changeString(sourcePath.getAbsolutePath(), '\\', "\\", true), "")).getAbsolutePath();
                         logger.i("Renaming " + f + " to " + targetDir + File.separator + f.getName() + "...");
-                        if (FileHelper.renameTo(f, targetDir, f.getName(), true) != null) {
+                        if (FileHelper.renameTo(f, targetDir, f.getName(), true, allowDeleteEmptyDirs) != null) {
                             logger.i("File " + f + " renamed successfully to " + targetDir + File.separator + f.getName());
                             tryToCopy = false;
                         } else {
@@ -163,9 +168,9 @@ public class CopyUtil {
                         public void onSucceeded(File currentFile, File resultFile, int currentLevel) {
                             logger.i("File " + currentFile + " copied successfully to " + resultFile);
                             if (finalDeleteCopiedFiles) {
-                                logger.i("Deleting " + currentFile + "...");
+                                logger.i("Deleting copied " + currentFile + "...");
                                 if (!FileHelper.deleteFile(currentFile)) {
-                                    logger.e("Delete file " + currentFile + " failed!");
+                                    logger.e("Delete copied file " + currentFile + " failed!");
                                 }
                             }
                         }
@@ -175,6 +180,10 @@ public class CopyUtil {
                             logger.e("File " + currentFile + " copy failed to dir " + destFile + " !");
                         }
                     }, true, FileHelper.DEPTH_UNLIMITED);
+
+                    if (allowDeleteEmptyDirs) {
+                        FileHelper.deleteEmptyDir(sourcePathToCopy);
+                    }
                 }
             } else {
                 logger.wtf("incorrect source path: " + sourcePathToCopy);

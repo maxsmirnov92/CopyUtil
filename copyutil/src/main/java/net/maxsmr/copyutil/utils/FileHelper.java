@@ -343,7 +343,7 @@ public final class FileHelper {
     }
 
     // TODO move
-    public static File renameTo(File sourceFile, String destinationDir, String newFileName, boolean deleteIfExists) {
+    public static File renameTo(File sourceFile, String destinationDir, String newFileName, boolean deleteIfExists, boolean deleteEmptyDirs) {
 
         if (!isFileExists(sourceFile)) {
             logger.e("Source file not exists: " + sourceFile);
@@ -377,6 +377,10 @@ public final class FileHelper {
                 logger.i("Renaming file " + sourceFile + " to " + newFile + "...");
                 if (sourceFile.renameTo(newFile)) {
                     logger.i("File " + sourceFile + " renamed successfully to " + newFile);
+                    File sourceParentDir = sourceFile.getParentFile();
+                    if (deleteEmptyDirs) {
+                        deleteEmptyDir(sourceParentDir);
+                    }
                 } else {
                     logger.e("File " + sourceFile + " rename failed to " + newFile);
                 }
@@ -386,6 +390,15 @@ public final class FileHelper {
         }
 
         return newFile;
+    }
+
+    // TODO move
+    public static boolean isDirEmpty(File dir) {
+        if (isDirExists(dir)) {
+            File[] files = dir.listFiles();
+            return files == null || files.length == 0;
+        }
+        return false;
     }
 
     public static boolean isBinaryFile(File f) throws FileNotFoundException, IOException {
@@ -986,14 +999,9 @@ public final class FileHelper {
         return searchFiles;
     }
 
-    public static boolean deleteDir(File dir) {
-        if (dir != null && dir.isDirectory()) {
-            File[] files = dir.listFiles();
-            if ((files == null || files.length == 0) && dir.delete()) {
-                return true;
-            }
-        }
-        return false;
+    // TODO move
+    public static boolean deleteEmptyDir(File dir) {
+        return isDirEmpty(dir) && dir.delete();
     }
 
     public static boolean deleteFile(File file) {
