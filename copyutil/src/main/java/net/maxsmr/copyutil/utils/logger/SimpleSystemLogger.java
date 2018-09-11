@@ -1,6 +1,5 @@
 package net.maxsmr.copyutil.utils.logger;
 
-// FIXME
 public class SimpleSystemLogger extends BaseLogger {
 
     @Override
