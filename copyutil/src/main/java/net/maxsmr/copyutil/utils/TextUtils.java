@@ -1,5 +1,7 @@
 package net.maxsmr.copyutil.utils;
 
+import static net.maxsmr.copyutil.utils.CompareUtils.charsEqual;
+
 public class TextUtils {
 
     /**
@@ -53,13 +55,5 @@ public class TextUtils {
         }
 
         return newStr.toString();
-    }
-
-    public static boolean charsEqual(Character one, Character another, boolean ignoreCase) {
-        if (ignoreCase) {
-            one = one != null ? Character.toUpperCase(one) : null;
-            another = another != null ? Character.toUpperCase(another) : null;
-        }
-        return one != null ? one.equals(another) : another == null;
     }
 }

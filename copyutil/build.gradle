@@ -4,11 +4,13 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
+version = project.copyUtilVersion
 
 jar {
     manifest {
         attributes(
-                'Main-Class': 'net.maxsmr.copyutil.CopyUtil'
+                'Main-Class': 'net.maxsmr.copyutil.CopyUtil',
+                'DEBUG': true
         )
     }
 }

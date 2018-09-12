@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -764,9 +765,6 @@ public final class FileHelper {
         return false;
     }
 
-    /**
-     * This function will return size in form of bytes
-     */
     public static long getSize(File f, int depth) {
         return getSize(f, depth, 0);
     }
@@ -1168,6 +1166,17 @@ public final class FileHelper {
         return result;
     }
 
+    public static String filesToString(Collection<File> files, int depth) {
+        if (files != null) {
+            Map<File, Long> map = new LinkedHashMap<>();
+            for (File f : files) {
+                map.put(f, getSize(f, depth));
+            }
+            return filesWithSizeToString(map);
+        }
+        return "";
+    }
+
     public static String filesWithSizeToString(Map<File, Long> files) {
         return filesWithSizeToString(files.entrySet());
     }
@@ -1187,7 +1196,7 @@ public final class FileHelper {
                         sb.append(System.getProperty("line.separator"));
                     }
                     sb.append(f.getKey().getAbsolutePath());
-                    sb.append(" :");
+                    sb.append(" : ");
                     sb.append(f.getValue() != null ? sizeToString(f.getValue(), SizeUnit.BYTES) : 0);
                 }
             }
@@ -1218,12 +1227,10 @@ public final class FileHelper {
         StringBuilder sb = new StringBuilder();
         if (s < SizeUnit.C1 && !sizeUnitsToExclude.contains(SizeUnit.BYTES)) {
             sb.append((int) s);
-            sb.append(" ");
             sb.append(" Bytes");
         } else if (s >= SizeUnit.C1 && s < SizeUnit.C2 && !sizeUnitsToExclude.contains(SizeUnit.KBYTES)) {
             double kbytes = SizeUnit.BYTES.toKBytes(s);
             sb.append(!sizeUnitsToExclude.contains(SizeUnit.BYTES) ? (long) kbytes : kbytes);
-            sb.append(" ");
             sb.append(" KBytes");
             double restBytes = s - SizeUnit.KBYTES.toBytes(kbytes);
             if (restBytes > 0) {
@@ -1233,7 +1240,6 @@ public final class FileHelper {
         } else if (s >= SizeUnit.C2 && s < SizeUnit.C3 && !sizeUnitsToExclude.contains(SizeUnit.MBYTES)) {
             double mbytes = SizeUnit.BYTES.toMBytes(s);
             sb.append(!sizeUnitsToExclude.contains(SizeUnit.KBYTES) ? (long) mbytes : mbytes);
-            sb.append(" ");
             sb.append(" MBytes");
             double restBytes = s - SizeUnit.MBYTES.toBytes(mbytes);
             if (restBytes > 0) {
@@ -1243,7 +1249,6 @@ public final class FileHelper {
         } else if (!sizeUnitsToExclude.contains(SizeUnit.GBYTES)) {
             double gbytes = SizeUnit.BYTES.toGBytes(s);
             sb.append(!sizeUnitsToExclude.contains(SizeUnit.MBYTES) ? (long) gbytes : gbytes);
-            sb.append(" ");
             sb.append(" GBytes");
             double restBytes = s - SizeUnit.GBYTES.toBytes(gbytes);
             if (restBytes > 0) {
