@@ -62,6 +62,10 @@ public class TextUtils {
     }
 
     public static String trim(CharSequence cs, boolean fromStart, boolean fromEnd) {
+        return trim(cs, CompareUtils.Condition.LESS_OR_EQUAL, ' ', fromStart, fromEnd);
+    }
+
+    public static String trim(CharSequence cs, CompareUtils.Condition condition, char byChar, boolean fromStart, boolean fromEnd) {
 
         if (cs == null) {
             return "";
@@ -73,12 +77,12 @@ public class TextUtils {
         int st = 0;
 
         if (fromStart) {
-            while ((st < len) && (str.charAt(st) <= ' ')) {
+            while ((st < len) && (condition.apply(str.charAt(st), byChar, false))) {
                 st++;
             }
         }
         if (fromEnd) {
-            while ((st < len) && (str.charAt(len - 1) <= ' ')) {
+            while ((st < len) && (condition.apply(str.charAt(len - 1), byChar, false))) {
                 len--;
             }
         }

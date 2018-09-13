@@ -1098,10 +1098,17 @@ public final class FileHelper {
                 continue;
             }
 
-            final File currentDestDir;
+            File currentDestDir = null;
             if (!f.equals(fromFile)) {
-                currentDestDir = new File(destDir, f.getParent().replaceFirst(TextUtils.appendOrReplaceChar(fromFile.getAbsolutePath(), '\\', "\\", false, true), "")); // windows separator case
-            } else {
+                String part = f.getParent();
+                if (part.startsWith(fromFile.getAbsolutePath())) {
+                    part = part.substring(fromFile.getAbsolutePath().length(), part.length());
+                }
+                if (!TextUtils.isEmpty(part)) {
+                    currentDestDir = new File(destDir, part);
+                }
+            }
+            if (currentDestDir == null) {
                 currentDestDir = destDir;
             }
 
