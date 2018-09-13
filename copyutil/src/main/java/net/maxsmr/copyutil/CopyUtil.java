@@ -2,7 +2,6 @@ package net.maxsmr.copyutil;
 
 import net.maxsmr.copyutil.utils.CompareUtils;
 import net.maxsmr.copyutil.utils.FileHelper;
-import net.maxsmr.copyutil.utils.Pair;
 import net.maxsmr.copyutil.utils.Predicate;
 import net.maxsmr.copyutil.utils.TextUtils;
 import net.maxsmr.copyutil.utils.logger.BaseLogger;
@@ -10,12 +9,17 @@ import net.maxsmr.copyutil.utils.logger.SimpleSystemLogger;
 import net.maxsmr.copyutil.utils.logger.holder.BaseLoggerHolder;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static net.maxsmr.copyutil.utils.ArgsParser.findArg;
+import static net.maxsmr.copyutil.utils.ArgsParser.getPairArg;
+
+// TODO exclusion source relative list
 public class CopyUtil {
 
     private static final BaseLogger logger;
@@ -38,22 +42,6 @@ public class CopyUtil {
             }
         });
         logger = BaseLoggerHolder.getInstance().getLogger(CopyUtil.class);
-    }
-
-    public static Pair<Integer, String> findArg(String[] argsNames, String[] args, int index) {
-        if (argsNames == null || argsNames.length == 0) {
-            throw new IllegalArgumentException("Incorrect args names: " + Arrays.toString(argsNames));
-        }
-        if (index < 0 || index >= argsNames.length) {
-            throw new IllegalArgumentException("Incorrect arg name index: " + index);
-        }
-        return args != null?
-                Predicate.Methods.findWithIndex(Arrays.asList(args), element -> element != null && element.equals(argsNames[index]))
-                : null;
-    }
-
-    public static String getPairArg(String args[], Pair<Integer, String> pair) {
-        return args != null && pair != null && pair.first < args.length - 1? args[pair.first + 1] : null;
     }
 
     public static String getPathsListFile(String args[]) {
@@ -91,9 +79,20 @@ public class CopyUtil {
         if (!allowIgnore) {
             String excluded = Predicate.Methods.find(Arrays.asList(excludedPaths), element -> element != null && CompareUtils.stringMatches(file.getAbsolutePath(), element, CompareUtils.MatchStringOption.CONTAINS_IGNORE_CASE.flag));
             if (!TextUtils.isEmpty(excluded)) {
-                logger.e("Not messing with " + (isSource? "source" : "destination") + " file \"" + file + "\" (contains \"" + excluded + "\"), skipping...");
+                logger.e("Not messing with " + (isSource ? "source" : "destination") + " file/directory \"" + file + "\" (contains \"" + excluded + "\"), skipping...");
                 return false;
             }
+        }
+        return true;
+    }
+
+    public static boolean isDestinationDirAllowed(File sourceFile, File dir) {
+        if (dir == null) {
+            return false;
+        }
+        if (dir.getParentFile() == null) {
+            logger.e("Root of partition is not allowed (target directory \"" + dir + (sourceFile != null? "\" and source file \"" + sourceFile + "\")" : "\""));
+            return false;
         }
         return true;
     }
@@ -106,16 +105,21 @@ public class CopyUtil {
             throw new IllegalArgumentException("Args not specified!");
         }
 
-        final String pathsList = getPathsListFile(args);
-        FileHelper.checkFile(pathsList, false);
-        final File pathsListFile = new File(pathsList);
+        final String pathsList = TextUtils.trim(getPathsListFile(args), false, true);
+        final File pathsListFile;
+        if (!TextUtils.isEmpty(pathsList)) {
+            FileHelper.checkFile(pathsList, false);
+            pathsListFile = new File(pathsList);
+        } else {
+            pathsListFile = null;
+        }
 
-        final String sourcePath = getSourcePath(args);
+        final String sourcePath = TextUtils.trim(getSourcePath(args), false, true);
         FileHelper.checkDir(sourcePath, false);
         final File sourcePathFile = new File(sourcePath);
         logger.i("Source path to copy/move from: \"" + sourcePathFile + "\"");
 
-        final String destinationPath = getDestinationPath(args);
+        final String destinationPath = TextUtils.trim(getDestinationPath(args), false, true);
         if (TextUtils.isEmpty(destinationPath)) {
             throw new IllegalArgumentException("Destination path is not specified");
         }
@@ -134,7 +138,15 @@ public class CopyUtil {
 
         final Map<File, Boolean> resultMap = new LinkedHashMap<>();
 
-        List<String> pathsToCopyList = FileHelper.readStringsFromFile(pathsListFile);
+        final List<String> pathsToCopyList;
+        if (pathsListFile != null) {
+            pathsToCopyList = FileHelper.readStringsFromFile(pathsListFile);
+        } else {
+            pathsToCopyList = new ArrayList<>();
+        }
+        if (pathsToCopyList.isEmpty()) {
+            pathsToCopyList.add(File.separator);
+        }
         logger.i("Paths to copy/move:" + System.getProperty("line.separator") + pathsToCopyList + System.getProperty("line.separator"));
 
         for (String relativePath : pathsToCopyList) {
@@ -143,96 +155,115 @@ public class CopyUtil {
                 continue;
             }
 
-            final File sourcePathToCopy = !relativePath.equals(File.separator)? new File(sourcePathFile, relativePath) : sourcePathFile;
+            relativePath = TextUtils.trim(relativePath, false, true);
 
-            if (FileHelper.isFileExists(sourcePathToCopy)) {
+            final File sourcePathToHandle = !relativePath.equals(File.separator) ? new File(sourcePathFile, relativePath) : sourcePathFile;
 
-                if (!resultMap.containsKey(sourcePathToCopy)) {
+            if (FileHelper.isFileExists(sourcePathToHandle)) {
 
-                    if (!isFileAllowed(allowIgnoreExcludedPaths, sourcePathToCopy, true)) {
-                        continue;
-                    }
-
-                    final File targetFile = !relativePath.equals(File.separator)? new File(destinationPathFile, relativePath) : new File(destinationPathFile, sourcePathToCopy.getName());
-
-                    if (!isFileAllowed(allowIgnoreExcludedPaths, targetFile, false)) {
-                        continue;
-                    }
+                if (!resultMap.containsKey(sourcePathToHandle)) {
 
                     boolean result = true;
 
-                    boolean tryToCopy = true;
+                    File targetFile = null;
 
-                    if (allowRenameFiles) {
-                        logger.i("Renaming \"" + sourcePathToCopy + "\" to \"" + targetFile + "\"...");
-                        if (FileHelper.renameTo(sourcePathToCopy, targetFile.getParent(), targetFile.getName(), true, allowDeleteEmptyDirs) != null) {
-                            logger.i("File \"" + sourcePathToCopy + "\" renamed successfully to \"" + targetFile + "\"");
-                            tryToCopy = false;
-                        } else {
-                            logger.i("File \"" + sourcePathToCopy + "\" rename failed to " + targetFile + "\"");
+                    try {
+
+                        if (!isFileAllowed(allowIgnoreExcludedPaths, sourcePathToHandle, true)) {
+                            result = false;
+                            continue;
                         }
-                    }
 
-                    if (tryToCopy) {
+                        targetFile = !relativePath.equals(File.separator) ? new File(destinationPathFile, relativePath) : new File(destinationPathFile, sourcePathToHandle.getName());
 
-                        result = false;
+                        if (!isFileAllowed(allowIgnoreExcludedPaths, targetFile, false)
+                                || !isDestinationDirAllowed(sourcePathToHandle, targetFile.getParentFile())) {
+                            result = false;
+                            continue;
+                        }
 
-                        logger.i("Copying file \"" + sourcePathToCopy + "\" to \"" + targetFile + "\"...");
-                        if (FileHelper.copyFileWithBuffering(sourcePathToCopy, targetFile.getName(), targetFile.getParent(), true, true, null) != null) {
-                            logger.i("File \"" + sourcePathToCopy + "\" copied successfully to " + targetFile);
-                            if (allowDeleteCopiedFiles) {
-                                logger.i("Deleting copied file \"" + sourcePathToCopy + "\"...");
-                                if (!FileHelper.deleteFile(sourcePathToCopy)) {
-                                    logger.e("Delete copied file \"" + sourcePathToCopy + "\" failed!");
-                                }
+                        if (allowRenameFiles) {
+                            logger.i("Renaming \"" + sourcePathToHandle + "\" to \"" + targetFile + "\"...");
+                            if (FileHelper.renameTo(sourcePathToHandle, targetFile.getParent(), targetFile.getName(), true, allowDeleteEmptyDirs) != null) {
+                                logger.i("File \"" + sourcePathToHandle + "\" renamed successfully to \"" + targetFile + "\"");
+                            } else {
+                                result = false;
+                                logger.i("File \"" + sourcePathToHandle + "\" rename failed to " + targetFile + "\"");
                             }
-                            result = true;
-                        } else {
-                            logger.e("File \"" + sourcePathToCopy + "\" copy failed to \"" + targetFile + "\" !");
                         }
-                    }
 
-                    resultMap.put(tryToCopy? sourcePathToCopy : targetFile, result);
+                        if (!result) {
+
+                            result = true;
+
+                            logger.i("Copying file \"" + sourcePathToHandle + "\" to \"" + targetFile + "\"...");
+                            if (FileHelper.copyFileWithBuffering(sourcePathToHandle, targetFile.getName(), targetFile.getParent(), true, true, null) != null) {
+                                logger.i("File \"" + sourcePathToHandle + "\" copied successfully to " + targetFile);
+                                if (allowDeleteCopiedFiles) {
+                                    logger.i("Deleting copied file \"" + sourcePathToHandle + "\"...");
+                                    if (!FileHelper.deleteFile(sourcePathToHandle)) {
+                                        logger.e("Delete copied file \"" + sourcePathToHandle + "\" failed!");
+                                    }
+                                }
+                            } else {
+                                result = false;
+                                logger.e("File \"" + sourcePathToHandle + "\" copy failed to \"" + targetFile + "\" !");
+                            }
+                        }
+                    } finally {
+                        resultMap.put(result ? targetFile : sourcePathToHandle, result);
+                    }
                 }
 
-            } else if (FileHelper.isDirExists(sourcePathToCopy)) {
+            } else if (FileHelper.isDirExists(sourcePathToHandle)) {
 
                 boolean tryToCopy = true;
 
                 if (allowRenameFiles) {
-                    Set<File> filesToRename = FileHelper.getFiles(sourcePathToCopy, FileHelper.GetMode.FILES, null, null, FileHelper.DEPTH_UNLIMITED);
+                    Set<File> filesToRename = FileHelper.getFiles(sourcePathToHandle, FileHelper.GetMode.FILES, null, null, FileHelper.DEPTH_UNLIMITED);
                     for (File f : filesToRename) {
 
                         if (!resultMap.containsKey(f)) {
 
-                            if (!isFileAllowed(allowIgnoreExcludedPaths, f, true)) {
-                                continue;
+                            boolean isAllowed = true;
+
+                            try {
+
+                                if (!isFileAllowed(allowIgnoreExcludedPaths, f, true)) {
+                                    isAllowed = false;
+                                    continue;
+                                }
+
+                                File targetDir = new File(destinationPathFile, f.getParent().replaceFirst(TextUtils.appendOrReplaceChar(sourcePathFile.getAbsolutePath(), '\\', "\\", false, true), ""));
+                                File targetFile = new File(targetDir, f.getName());
+
+                                if (!isFileAllowed(allowIgnoreExcludedPaths, targetFile, false)
+                                        || !isDestinationDirAllowed(f, targetDir)) {
+                                    isAllowed = false;
+                                    continue;
+                                }
+
+                                logger.i("Renaming \"" + f + "\" to \"" + targetFile + "\"...");
+                                if (FileHelper.renameTo(f, targetFile.getParent(), targetFile.getName(), true, allowDeleteEmptyDirs) != null) {
+                                    logger.i("File \"" + f + "\" renamed successfully to \"" + targetFile + "\"");
+                                    tryToCopy = false;
+                                    resultMap.put(targetFile, true);
+                                } else {
+                                    logger.e("File \"" + f + "\" rename failed to \"" + targetFile + "\"");
+                                }
+
+                            } finally {
+                                if (!isAllowed) {
+                                    resultMap.put(f, false);
+                                }
                             }
-
-                            File targetDir = new File(destinationPathFile, f.getParent().replaceFirst(TextUtils.appendOrReplaceChar(sourcePathFile.getAbsolutePath(), '\\', "\\", false, true), ""));
-                            File targetFile = new File(targetDir, f.getName());
-
-                            if (!isFileAllowed(allowIgnoreExcludedPaths, targetFile, false)) {
-                                continue;
-                            }
-
-                            logger.i("Renaming \"" + f + "\" to \"" + targetFile + "\"...");
-                            if (FileHelper.renameTo(f, targetFile.getParent(), targetFile.getName(), true, allowDeleteEmptyDirs) != null) {
-                                logger.i("File \"" + f + "\" renamed successfully to \"" + targetFile + "\"");
-                                tryToCopy = false;
-                                resultMap.put(targetFile, true);
-                            } else {
-                                logger.e("File \"" + f + "\" rename failed to \"" + targetFile + "\"");
-                            }
-
                         }
                     }
                 }
 
                 if (tryToCopy) {
-                    final File targetDir = !relativePath.equals(File.separator)? new File(destinationPathFile, relativePath) : destinationPathFile;
-                    boolean finalDeleteCopiedFiles = allowDeleteCopiedFiles;
-                    FileHelper.copyFilesWithBuffering2(sourcePathToCopy, targetDir, null, null, new FileHelper.IMultipleCopyNotifier2() {
+                    final File targetDir = !relativePath.equals(File.separator) ? new File(destinationPathFile, relativePath) : destinationPathFile;
+                    FileHelper.copyFilesWithBuffering2(sourcePathToHandle, targetDir, null, null, new FileHelper.IMultipleCopyNotifier2() {
                         @Override
                         public boolean onCalculatingSize(File current, Set<File> collected) {
                             return !Thread.currentThread().isInterrupted();
@@ -245,8 +276,14 @@ public class CopyUtil {
 
                         @Override
                         public boolean confirmCopy(File currentFile, File destDir) {
-                            return !resultMap.containsKey(currentFile)
-                                    && isFileAllowed(allowIgnoreExcludedPaths, currentFile, true) && isFileAllowed(allowIgnoreExcludedPaths, destinationPathFile, false);
+                            final boolean isConfirmed = !resultMap.containsKey(currentFile)
+                                    && isFileAllowed(allowIgnoreExcludedPaths, currentFile, true)
+                                    && isFileAllowed(allowIgnoreExcludedPaths, destDir, false)
+                                    && isDestinationDirAllowed(currentFile, destDir);
+                            if (!isConfirmed) {
+                                resultMap.put(currentFile, false);
+                            }
+                            return isConfirmed;
                         }
 
                         @Override
@@ -263,37 +300,44 @@ public class CopyUtil {
                         @Override
                         public void onSucceeded(File currentFile, File resultFile) {
                             logger.i("File \"" + currentFile + "\" copied successfully to \"" + resultFile + "\"");
-                            if (finalDeleteCopiedFiles) {
+                            if (allowDeleteCopiedFiles) {
                                 logger.i("Deleting copied \"" + currentFile + "\"...");
                                 if (!FileHelper.deleteFile(currentFile)) {
                                     logger.e("Delete copied file \"" + currentFile + "\" failed!");
                                 }
                             }
-                            resultMap.put(currentFile, true);
+                            resultMap.put(resultFile, true);
                         }
 
                         @Override
-                        public void onFailed(File currentFile, File destFile) {
-                            logger.e("File \"" + currentFile + "\" copy failed to dir \"" + destFile + "\" !");
+                        public void onFailed(File currentFile, File destDir) {
+                            logger.e("File \"" + currentFile + "\" copy failed to dir \"" + destDir + "\" !");
                             resultMap.put(currentFile, false);
                         }
                     }, true, FileHelper.DEPTH_UNLIMITED, null);
 
                     if (allowDeleteEmptyDirs) {
-                        FileHelper.deleteEmptyDir(sourcePathToCopy);
+                        FileHelper.deleteEmptyDir(sourcePathToHandle);
                     }
                 }
             } else {
-                logger.wtf("Incorrect source path: \"" + sourcePathToCopy + "\"");
-                resultMap.put(sourcePathToCopy, false);
+                logger.wtf("Incorrect source path: \"" + sourcePathToHandle + "\"");
+                resultMap.put(sourcePathToHandle, false);
             }
         }
 
+        final List<Map.Entry<File, Boolean>> succeededFiles = Predicate.Methods.filter(resultMap.entrySet(), Map.Entry::getValue);
+        final List<Map.Entry<File, Boolean>> failedFiles = Predicate.Methods.filter(resultMap.entrySet(), element -> !element.getValue());
         logger.i("");
+        if (!succeededFiles.isEmpty()) {
+            logger.i("[==============succeeded==============]");
+            logger.i(FileHelper.filesToString(Predicate.Methods.entriesToKeys(succeededFiles), 0));
+        }
+        if (!failedFiles.isEmpty()) {
+            logger.i("[===============failed================]");
+            logger.i(FileHelper.filesToString(Predicate.Methods.entriesToKeys(failedFiles), 0));
+        }
         logger.i("=======================================");
-        logger.i(FileHelper.filesToString(Predicate.Methods.entriesToKeys(Predicate.Methods.filter(resultMap.entrySet(), Map.Entry::getValue)), 0));
-        logger.i("=======================================");
-        logger.i("Copy/move done; succeeded: " + Predicate.Methods.filter(resultMap.entrySet(), Map.Entry::getValue).size()
-                + ", failed: " + Predicate.Methods.filter(resultMap.entrySet(), element -> !element.getValue()).size());
+        logger.i("Copy/move done; succeeded: " + succeededFiles.size() + ", failed: " + failedFiles.size());
     }
 }

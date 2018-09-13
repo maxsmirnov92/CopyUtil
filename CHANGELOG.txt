@@ -1,0 +1,11 @@
+* Wed Aug 12 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0
+
+first public release
+
+=======================================
+
+* Thu Aug 13 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0.1
+
+- pathsListFile parameter is now optional; if specified file is absent or empty it will be interpreted as one file separator in paths list
+- copy/move files to the root of partition is now restricted (to avoid "BOOTMGR is missing" error on system partitions in some cases); folders is allowed like before
+- minor bugfixes

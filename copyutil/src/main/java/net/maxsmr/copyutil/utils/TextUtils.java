@@ -56,4 +56,32 @@ public class TextUtils {
 
         return newStr.toString();
     }
+
+    public static String trim(CharSequence cs) {
+        return trim(cs, true, true);
+    }
+
+    public static String trim(CharSequence cs, boolean fromStart, boolean fromEnd) {
+
+        if (cs == null) {
+            return "";
+        }
+
+        String str = cs.toString();
+
+        int len = str.length();
+        int st = 0;
+
+        if (fromStart) {
+            while ((st < len) && (str.charAt(st) <= ' ')) {
+                st++;
+            }
+        }
+        if (fromEnd) {
+            while ((st < len) && (str.charAt(len - 1) <= ' ')) {
+                len--;
+            }
+        }
+        return ((st > 0) || (len < str.length())) ? str.substring(st, len) : str;
+    }
 }
