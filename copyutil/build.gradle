@@ -9,8 +9,9 @@ version = project.copyUtilVersion
 jar {
     manifest {
         attributes(
+                'Manifest-Version': project.copyUtilVersion,
                 'Main-Class': 'net.maxsmr.copyutil.CopyUtil',
-                'DEBUG': true
+                'DEBUG': false
         )
     }
 }
