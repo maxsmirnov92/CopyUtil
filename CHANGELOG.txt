@@ -11,3 +11,15 @@ first public release
 * Thu Aug 13 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0.2
 
 - excludeSourcePathsFile optional parameter added; absolute path to file with relative paths that should be excluded when copying/moving content from source directory
+
+* Fri Aug 14 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0.2.1
+
+- output message when unknown command line argument was found
+- showing execution time in ms after copy/move
+
+* Sat Aug 15 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0.3
+
+- forceOverwrite parameter added; now if target file which copy/move to exists, it will be asked to be overwritten by default
+- execution time units is changing by value
+- source and destination files in console output when finished
+- bugfixes
