@@ -1,5 +1,7 @@
 package net.maxsmr.copyutil.utils;
 
+import java.util.Iterator;
+
 import static net.maxsmr.copyutil.utils.CompareUtils.charsEqual;
 
 public class TextUtils {
@@ -28,6 +30,24 @@ public class TextUtils {
                 sb.append(delimiter);
             }
             sb.append(token);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Returns a string containing the tokens joined by delimiters.
+     * @param tokens an array objects to be joined. Strings will be formed from
+     *     the objects by calling object.toString().
+     */
+    public static String join(CharSequence delimiter, Iterable tokens) {
+        StringBuilder sb = new StringBuilder();
+        Iterator<?> it = tokens.iterator();
+        if (it.hasNext()) {
+            sb.append(it.next());
+            while (it.hasNext()) {
+                sb.append(delimiter);
+                sb.append(it.next());
+            }
         }
         return sb.toString();
     }

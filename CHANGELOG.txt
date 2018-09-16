@@ -23,3 +23,8 @@ first public release
 - execution time units is changing by value
 - source and destination files in console output when finished
 - bugfixes
+
+* Syn Aug 16 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0.3.1
+
+- enabled confirmation by user if specified source directory is root of the partition
+- console output messages synchronization bug fixed

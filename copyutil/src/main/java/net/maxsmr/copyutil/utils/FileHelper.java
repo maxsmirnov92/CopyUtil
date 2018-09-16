@@ -325,7 +325,7 @@ public final class FileHelper {
                 }
             }
 
-            if (newFile != null) {
+            if (newFile != null && !newFile.equals(sourceFile)) {
                 logger.i("Renaming file " + sourceFile + " to " + newFile + "...");
                 if (sourceFile.renameTo(newFile)) {
                     logger.i("File " + sourceFile + " renamed successfully to " + newFile);
@@ -391,7 +391,7 @@ public final class FileHelper {
 
     public static String readStringFromFile(File file) {
         List<String> strings = readStringsFromFile(file);
-        return !strings.isEmpty() ? TextUtils.join(System.getProperty("line.separator"), strings.toArray(new String[strings.size()])) : null;
+        return !strings.isEmpty() ? TextUtils.join(System.getProperty("line.separator"), strings) : null;
     }
 
 
@@ -702,16 +702,24 @@ public final class FileHelper {
 
         String targetName = TextUtils.isEmpty(destName) ? sourceFile.getName() : destName;
 
-        final File destFile = createNewFile(targetName, destDir, rewrite);
+        File destFile = destDir != null && !TextUtils.isEmpty(targetName)? new File(destDir, targetName) : null;
 
         if (destFile == null || destFile.equals(sourceFile)) {
-            logger.e("Incorrect destination file: " + destDir + " ( source file: " + sourceFile + ")");
+            logger.e("Incorrect destination file: " + destDir + " (source file: " + sourceFile + ")");
+            return null;
+        }
+
+        destFile = createNewFile(targetName, destDir, rewrite);
+
+        if (destFile == null) {
+            logger.e("Can't create destination file: " + destDir + File.separator + targetName);
             return null;
         }
 
         final long totalBytesCount = sourceFile.length();
 
         try {
+            File finalDestFile = destFile;
             if (writeFromStreamToFile(new FileInputStream(sourceFile), destFile.getName(), destFile.getParent(), !rewrite, notifier != null ? new StreamUtils.IStreamNotifier() {
                 @Override
                 public long notifyInterval() {
@@ -720,7 +728,7 @@ public final class FileHelper {
 
                 @Override
                 public boolean onProcessing(InputStream inputStream, OutputStream outputStream, long bytesWrite, long bytesLeft) {
-                    return notifier.onProcessing(sourceFile, destFile, bytesWrite, totalBytesCount);
+                    return notifier.onProcessing(sourceFile, finalDestFile, bytesWrite, totalBytesCount);
                 }
             } : null) != null) {
                 if (preserveFileDate) {

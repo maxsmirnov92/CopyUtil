@@ -38,6 +38,7 @@ public class CopyUtil {
 
 
     static {
+        System.setErr(System.out);
         BaseLoggerHolder.initInstance(() -> new BaseLoggerHolder(false) {
             @Override
             protected BaseLogger createLogger(Class<?> clazz) {
@@ -162,7 +163,7 @@ public class CopyUtil {
 
     public static void main(String args[]) {
 
-        logger.i(System.getProperty(lineSeparator) + CopyUtil.class.getSimpleName() + ", version: 1.0.3"); // FIXME
+        logger.i(System.getProperty(lineSeparator) + CopyUtil.class.getSimpleName() + ", version: 1.0.3.1"); // FIXME
 
         if (args == null || args.length == 0) {
             throw new IllegalArgumentException("Args not specified!");
@@ -227,7 +228,7 @@ public class CopyUtil {
         if (pathsToHandleList.isEmpty()) {
             pathsToHandleList.add(File.separator);
         }
-        logger.i("Relative paths to copy/move:" + System.getProperty(lineSeparator) + pathsToHandleList + System.getProperty(lineSeparator));
+        logger.i("Relative paths to copy/move:" + System.getProperty(lineSeparator) + pathsToHandleList);
 
         if (excludeSourcePathsListFile != null) {
             excludeSourcePathsList = FileHelper.readStringsFromFile(excludeSourcePathsListFile);
@@ -314,132 +315,143 @@ public class CopyUtil {
 
             } else if (FileHelper.isDirExists(sourcePathToHandle)) {
 
-                if (renameFiles) {
+                boolean isAllowed = true;
 
-                    Set<File> filesToRename = FileHelper.getFiles(sourcePathToHandle, FileHelper.GetMode.FILES, null, null, FileHelper.DEPTH_UNLIMITED);
-                    for (File f : filesToRename) {
+                if (sourcePathToHandle.getParentFile() == null) {
+                    logger.i("Source directory \"" + sourcePathToHandle + "\" to copy/move from is root of the partition. Proceed? (y/n)");
+                    String answer = StreamUtils.readStringFromInputStream(System.in, 1, false);
+                    isAllowed = answer != null && (answer.equalsIgnoreCase("y") || answer.equalsIgnoreCase("yes"));
+                }
 
-                        if (!isSourceFileHandled(resultMap, f)) {
+                if (isAllowed) {
 
-                            boolean tryToCopy = false;
+                    if (renameFiles) {
 
-                            boolean result = false;
+                        Set<File> filesToRename = FileHelper.getFiles(sourcePathToHandle, FileHelper.GetMode.FILES, null, null, FileHelper.DEPTH_UNLIMITED);
+                        for (File f : filesToRename) {
 
-                            File targetFile = null;
+                            if (!isSourceFileHandled(resultMap, f)) {
 
-                            try {
+                                boolean tryToCopy = false;
 
-                                if (!isFileAllowed(f, true)) {
-                                    continue;
-                                }
+                                boolean result = false;
 
-                                String part = f.getParent();
+                                File targetFile = null;
 
-                                if (part.startsWith(sourcePathFile.getAbsolutePath())) {
-                                    part = part.substring(sourcePathFile.getAbsolutePath().length(), part.length()); // remove source path prefix from target file
-                                }
+                                try {
 
-                                File targetDir = !TextUtils.isEmpty(part) ? new File(destinationPathFile, part) : destinationPathFile;
-                                targetFile = new File(targetDir, f.getName());
-
-                                if (!isFileAllowed(targetFile, false)
-                                        || !isDestinationDirAllowed(f, targetDir)) {
-                                    continue;
-                                }
-
-                                logger.i("Renaming \"" + f + "\" to \"" + targetFile + "\"...");
-                                if (allowOverwrite(targetFile)) {
-                                    if (FileHelper.renameTo(f, targetFile.getParent(), targetFile.getName(), true, deleteEmptyDirs) != null) {
-                                        logger.i("File \"" + f + "\" renamed successfully to \"" + targetFile + "\"");
-                                        result = true;
-                                    } else {
-                                        tryToCopy = true;
-                                        logger.e("File \"" + f + "\" rename failed to \"" + targetFile + "\"");
+                                    if (!isFileAllowed(f, true)) {
+                                        continue;
                                     }
-                                }
 
-                                if (!result && tryToCopy) {
+                                    String part = f.getParent();
 
-                                    result = true;
+                                    if (part.startsWith(sourcePathFile.getAbsolutePath())) {
+                                        part = part.substring(sourcePathFile.getAbsolutePath().length(), part.length()); // remove source path prefix from target file
+                                    }
 
-                                    logger.i("Copying file \"" + f + "\" to \"" + targetFile + "\"...");
-                                    if (allowOverwrite(targetFile) && FileHelper.copyFileWithBuffering(f, targetFile.getName(), targetFile.getParent(), true, true, null) != null) {
-                                        logger.i("File \"" + f + "\" copied successfully to " + targetFile);
-                                        if (deleteCopiedFiles) {
-                                            logger.i("Deleting copied file \"" + f + "\"...");
-                                            if (!FileHelper.deleteFile(f)) {
-                                                logger.e("Delete copied file \"" + f + "\" failed!");
-                                            }
+                                    File targetDir = !TextUtils.isEmpty(part) ? new File(destinationPathFile, part) : destinationPathFile;
+                                    targetFile = new File(targetDir, f.getName());
+
+                                    if (!isFileAllowed(targetFile, false)
+                                            || !isDestinationDirAllowed(f, targetDir)) {
+                                        continue;
+                                    }
+
+                                    logger.i("Renaming \"" + f + "\" to \"" + targetFile + "\"...");
+                                    if (allowOverwrite(targetFile)) {
+                                        if (FileHelper.renameTo(f, targetFile.getParent(), targetFile.getName(), true, deleteEmptyDirs) != null) {
+                                            logger.i("File \"" + f + "\" renamed successfully to \"" + targetFile + "\"");
+                                            result = true;
+                                        } else {
+                                            tryToCopy = true;
+                                            logger.e("File \"" + f + "\" rename failed to \"" + targetFile + "\"");
                                         }
-                                    } else {
-                                        result = false;
-                                        logger.e("File \"" + f + "\" copy failed to \"" + targetFile + "\" !");
+                                    }
+
+                                    if (!result && tryToCopy) {
+
+                                        result = true;
+
+                                        logger.i("Copying file \"" + f + "\" to \"" + targetFile + "\"...");
+                                        if (allowOverwrite(targetFile) && FileHelper.copyFileWithBuffering(f, targetFile.getName(), targetFile.getParent(), true, true, null) != null) {
+                                            logger.i("File \"" + f + "\" copied successfully to " + targetFile);
+                                            if (deleteCopiedFiles) {
+                                                logger.i("Deleting copied file \"" + f + "\"...");
+                                                if (!FileHelper.deleteFile(f)) {
+                                                    logger.e("Delete copied file \"" + f + "\" failed!");
+                                                }
+                                            }
+                                        } else {
+                                            result = false;
+                                            logger.e("File \"" + f + "\" copy failed to \"" + targetFile + "\" !");
+                                        }
+                                    }
+
+                                } finally {
+                                    resultMap.put(new Pair<>(f, targetFile), result);
+                                }
+                            }
+                        }
+
+                    } else {
+                        final File targetDir = !relativePath.equals(File.separator) ? new File(destinationPathFile, relativePath) : destinationPathFile;
+                        FileHelper.copyFilesWithBuffering2(sourcePathToHandle, targetDir, null, null, new FileHelper.IMultipleCopyNotifier2() {
+                            @Override
+                            public boolean onCalculatingSize(File current, Set<File> collected) {
+                                return !Thread.currentThread().isInterrupted();
+                            }
+
+                            @Override
+                            public boolean onProcessing(File currentFile, File destDir, Set<File> copied, long filesProcessed, long filesTotal) {
+                                return !Thread.currentThread().isInterrupted();
+                            }
+
+                            @Override
+                            public boolean confirmCopy(File currentFile, File destDir) {
+                                final boolean isConfirmed = !isSourceFileHandled(resultMap, currentFile)
+                                        && isFileAllowed(currentFile, true)
+                                        && isFileAllowed(destDir, false)
+                                        && isDestinationDirAllowed(currentFile, destDir);
+                                if (!isConfirmed) {
+                                    resultMap.put(new Pair<>(currentFile, new File(destDir, currentFile.getName())), false);
+                                }
+                                return isConfirmed;
+                            }
+
+                            @Override
+                            public File onBeforeCopy(File currentFile, File destDir) {
+                                logger.i("Copying file \"" + currentFile + "\" to dir \"" + destDir + "\"...");
+                                return null;
+                            }
+
+                            @Override
+                            public boolean onExists(File destFile) {
+                                return allowOverwrite(destFile);
+                            }
+
+                            @Override
+                            public void onSucceeded(File currentFile, File resultFile) {
+                                logger.i("File \"" + currentFile + "\" copied successfully to \"" + resultFile + "\"");
+                                if (deleteCopiedFiles) {
+                                    logger.i("Deleting copied \"" + currentFile + "\"...");
+                                    if (!FileHelper.deleteFile(currentFile)) {
+                                        logger.e("Delete copied file \"" + currentFile + "\" failed!");
                                     }
                                 }
-
-                            } finally {
-                                resultMap.put(new Pair<>(f, targetFile), result);
+                                resultMap.put(new Pair<>(currentFile, resultFile), true);
                             }
-                        }
-                    }
 
-                } else {
-                    final File targetDir = !relativePath.equals(File.separator) ? new File(destinationPathFile, relativePath) : destinationPathFile;
-                    FileHelper.copyFilesWithBuffering2(sourcePathToHandle, targetDir, null, null, new FileHelper.IMultipleCopyNotifier2() {
-                        @Override
-                        public boolean onCalculatingSize(File current, Set<File> collected) {
-                            return !Thread.currentThread().isInterrupted();
-                        }
-
-                        @Override
-                        public boolean onProcessing(File currentFile, File destDir, Set<File> copied, long filesProcessed, long filesTotal) {
-                            return !Thread.currentThread().isInterrupted();
-                        }
-
-                        @Override
-                        public boolean confirmCopy(File currentFile, File destDir) {
-                            final boolean isConfirmed = !isSourceFileHandled(resultMap, currentFile)
-                                    && isFileAllowed(currentFile, true)
-                                    && isFileAllowed(destDir, false)
-                                    && isDestinationDirAllowed(currentFile, destDir);
-                            if (!isConfirmed) {
-                                resultMap.put(new Pair<>(currentFile, new File(destDir, currentFile.getName())), false);
+                            @Override
+                            public void onFailed(File currentFile, File destDir) {
+                                logger.e("File \"" + currentFile + "\" copy failed to dir \"" + destDir + "\" !");
+                                resultMap.put(new Pair<>(currentFile, new File(destDir.getParentFile(), currentFile.getName())), false);
                             }
-                            return isConfirmed;
-                        }
+                        }, true, FileHelper.DEPTH_UNLIMITED, null);
 
-                        @Override
-                        public File onBeforeCopy(File currentFile, File destDir) {
-                            logger.i("Copying file \"" + currentFile + "\" to dir \"" + destDir + "\"...");
-                            return null;
+                        if (deleteEmptyDirs) {
+                            FileHelper.deleteEmptyDir(sourcePathToHandle);
                         }
-
-                        @Override
-                        public boolean onExists(File destFile) {
-                            return allowOverwrite(destFile);
-                        }
-
-                        @Override
-                        public void onSucceeded(File currentFile, File resultFile) {
-                            logger.i("File \"" + currentFile + "\" copied successfully to \"" + resultFile + "\"");
-                            if (deleteCopiedFiles) {
-                                logger.i("Deleting copied \"" + currentFile + "\"...");
-                                if (!FileHelper.deleteFile(currentFile)) {
-                                    logger.e("Delete copied file \"" + currentFile + "\" failed!");
-                                }
-                            }
-                            resultMap.put(new Pair<>(currentFile, resultFile), true);
-                        }
-
-                        @Override
-                        public void onFailed(File currentFile, File destDir) {
-                            logger.e("File \"" + currentFile + "\" copy failed to dir \"" + destDir + "\" !");
-                            resultMap.put(new Pair<>(currentFile, new File(destDir.getParentFile(), currentFile.getName())), false);
-                        }
-                    }, true, FileHelper.DEPTH_UNLIMITED, null);
-
-                    if (deleteEmptyDirs) {
-                        FileHelper.deleteEmptyDir(sourcePathToHandle);
                     }
                 }
             } else {
