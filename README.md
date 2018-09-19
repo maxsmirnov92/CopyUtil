@@ -15,3 +15,4 @@ root of partition is restricted for copy/move files (not folders) to
 -deleteCopiedFiles = allow delete successfully copied source files (ignored that specific file was renamed)
 -ignoreExcludedPaths = ignore hardcoded restricted path parts like "Windows" or "Program Files" - normally, if source or destination file(s) contain those parts, it will be skipped
 -forceOverwrite if target file which copy/move to exists, it will be overwritten without user confirm
+-disableRecursion if true files only on current level will be handled

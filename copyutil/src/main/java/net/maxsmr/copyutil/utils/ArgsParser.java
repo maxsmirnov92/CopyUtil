@@ -32,6 +32,10 @@ public class ArgsParser {
         handledArgsIndexes.clear();
     }
 
+    public boolean containsArg(int index, boolean ignoreCase) {
+        return findArgWithIndex(index, ignoreCase) != null;
+    }
+
     public String findArg(int index, boolean ignoreCase) {
         Pair<Integer, String> arg = findArgWithIndex(index, ignoreCase);
         return arg != null ? arg.second : null;
@@ -67,6 +71,10 @@ public class ArgsParser {
             }
         }
         return result;
+    }
+
+    public static boolean containsArg(Collection<String> argsNames, String[] args, int index) {
+        return findArgWithIndex(argsNames, args, index) != null;
     }
 
     public static Pair<Integer, String> findArgWithIndex(Collection<String> argsNames, String[] args, int index) {

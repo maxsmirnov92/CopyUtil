@@ -31,7 +31,7 @@ public class CopyUtil {
     private static final String lineSeparator = "line.separator";
 
     private static final String[] argsNames =
-            {"-pathsListFile", "-sourcePath", "-destinationPath", "-renameFiles", "-deleteEmptyDirs", "-deleteCopiedFiles", "-ignoreExcludedPaths", "-excludeSourcePathsFile", "-forceOverwrite"};
+            {"-pathsListFile", "-sourcePath", "-destinationPath", "-renameFiles", "-deleteEmptyDirs", "-deleteCopiedFiles", "-ignoreExcludedPaths", "-excludeSourcePathsFile", "-forceOverwrite", "-disableRecursion"};
 
     private static final String[] excludedPaths =
             {"Boot", "Documents and Settings", "ProgramData", "Program Files", "Program Files (x86)", "Recovery", "System Volume Information", "Windows", "Users"};
@@ -67,6 +67,7 @@ public class CopyUtil {
     private static boolean deleteCopiedFiles;
     private static boolean ignoreExcludedPaths;
     private static boolean forceOverwrite;
+    private static boolean disableRecursion;
 
     private static String getPathsListFile() {
         return argsParser.getPairArg(argsParser.findArgWithIndex(0, true));
@@ -85,23 +86,27 @@ public class CopyUtil {
     }
 
     private static boolean renameFiles() {
-        return argsParser.findArgWithIndex(3, true) != null;
+        return argsParser.containsArg(3, true);
     }
 
     private static boolean deleteEmptyDirs() {
-        return argsParser.findArgWithIndex(4, true) != null;
+        return argsParser.containsArg(4, true);
     }
 
     private static boolean deleteCopiedFiles() {
-        return argsParser.findArgWithIndex(5, true) != null;
+        return argsParser.containsArg(5, true);
     }
 
     private static boolean ignoreExcludedPaths() {
-        return argsParser.findArgWithIndex(6, true) != null;
+        return argsParser.containsArg(6, true);
     }
 
     public static boolean forceOverwrite() {
-        return argsParser.findArgWithIndex(8, true) != null;
+        return argsParser.containsArg(8, true);
+    }
+
+    public static boolean disableRecursion() {
+        return argsParser.containsArg(9, true);
     }
 
     private static boolean isFileAllowed(File file, boolean isSource) {
@@ -210,12 +215,11 @@ public class CopyUtil {
         deleteCopiedFiles = deleteCopiedFiles();
         ignoreExcludedPaths = ignoreExcludedPaths();
         forceOverwrite = forceOverwrite();
+        disableRecursion = disableRecursion();
 
         Set<Integer> unhandledIndexes = argsParser.getUnhandledArgsIndexes();
         for (Integer index : unhandledIndexes) {
-            if (index != null) {
-                logger.e("Unknown argument \"" + args[index] + "\" (position: " + index + ")");
-            }
+            logger.e("Unknown argument \"" + args[index] + "\" (position: " + index + ")");
         }
 
         final Map<Pair<File, File>, Boolean> resultMap = new LinkedHashMap<>();
@@ -327,7 +331,7 @@ public class CopyUtil {
 
                     if (renameFiles) {
 
-                        Set<File> filesToRename = FileHelper.getFiles(sourcePathToHandle, FileHelper.GetMode.FILES, null, null, FileHelper.DEPTH_UNLIMITED);
+                        Set<File> filesToRename = FileHelper.getFiles(sourcePathToHandle, FileHelper.GetMode.FILES, null, null, disableRecursion ? 0 : FileHelper.DEPTH_UNLIMITED);
                         for (File f : filesToRename) {
 
                             if (!isSourceFileHandled(resultMap, f)) {
@@ -447,7 +451,7 @@ public class CopyUtil {
                                 logger.e("File \"" + currentFile + "\" copy failed to dir \"" + destDir + "\" !");
                                 resultMap.put(new Pair<>(currentFile, new File(destDir.getParentFile(), currentFile.getName())), false);
                             }
-                        }, true, FileHelper.DEPTH_UNLIMITED, null);
+                        }, true, disableRecursion ? 0 : FileHelper.DEPTH_UNLIMITED, null);
 
                         if (deleteEmptyDirs) {
                             FileHelper.deleteEmptyDir(sourcePathToHandle);
