@@ -3,6 +3,7 @@ package net.maxsmr.copyutil.utils;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,16 +39,24 @@ public interface Predicate<V> {
             return result != null ? result.second : null;
         }
 
-        public static <V> List<V> filter(Collection<V> elements, Predicate<V> predicate) {
-            List<V> result = new ArrayList<>();
+        public static <V> Map<Integer, V> filterWithIndex(Collection<V> elements, Predicate<V>
+                predicate) {
+            Map<Integer, V> result = new LinkedHashMap<>();
             if (elements != null) {
+                int index = 0;
                 for (V elem : elements) {
                     if (predicate.apply(elem)) {
-                        result.add(elem);
+                        result.put(index, elem);
                     }
+                    index++;
                 }
             }
             return result;
+        }
+
+        public static <V> List<V> filter(Collection<V> elements, Predicate<V> predicate) {
+            Map<Integer, V> map = filterWithIndex(elements, predicate);
+            return entriesToValues(map.entrySet());
         }
 
         public static <K, V> List<K> entriesToKeys(Collection<Map.Entry<K, V>> entries) {

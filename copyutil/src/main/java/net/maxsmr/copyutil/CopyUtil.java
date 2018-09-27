@@ -284,7 +284,7 @@ public class CopyUtil {
                             tryToCopy = false;
                             logger.i("Renaming \"" + sourcePathToHandle + "\" to \"" + targetFile + "\"...");
                             if (allowOverwrite(targetFile)) {
-                                if (FileHelper.renameTo(sourcePathToHandle, targetFile.getParent(), targetFile.getName(), true, deleteEmptyDirs) != null) {
+                                if (FileHelper.renameFile(sourcePathToHandle, targetFile.getParent(), targetFile.getName(), true, deleteEmptyDirs) != null) {
                                     logger.i("File \"" + sourcePathToHandle + "\" renamed successfully to \"" + targetFile + "\"");
                                     result = true;
                                 } else {
@@ -364,7 +364,7 @@ public class CopyUtil {
 
                                     logger.i("Renaming \"" + f + "\" to \"" + targetFile + "\"...");
                                     if (allowOverwrite(targetFile)) {
-                                        if (FileHelper.renameTo(f, targetFile.getParent(), targetFile.getName(), true, deleteEmptyDirs) != null) {
+                                        if (FileHelper.renameFile(f, targetFile.getParent(), targetFile.getName(), true, deleteEmptyDirs) != null) {
                                             logger.i("File \"" + f + "\" renamed successfully to \"" + targetFile + "\"");
                                             result = true;
                                         } else {
