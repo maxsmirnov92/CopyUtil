@@ -1,4 +1,4 @@
-package net.maxsmr.copyutil.utils;
+package net.maxsmr.copyutil.utils.support;
 
 public class Pair<F, S> {
 

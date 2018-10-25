@@ -32,3 +32,7 @@ first public release
 * Wed Sep 19 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0.3.2
 
 - disableRecursion optional parameter added; if true files only on current level will be handled
+
+* Thu Oct 25 2018 Maxim Smirnov <max.smirnov92@yandex.ru> 1.0.3.3
+
+rename file bugfix

@@ -1,5 +1,7 @@
 package net.maxsmr.copyutil.utils;
 
+import net.maxsmr.copyutil.utils.support.Pair;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;

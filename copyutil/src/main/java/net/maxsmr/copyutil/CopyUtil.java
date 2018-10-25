@@ -3,7 +3,7 @@ package net.maxsmr.copyutil;
 import net.maxsmr.copyutil.utils.ArgsParser;
 import net.maxsmr.copyutil.utils.CompareUtils;
 import net.maxsmr.copyutil.utils.FileHelper;
-import net.maxsmr.copyutil.utils.Pair;
+import net.maxsmr.copyutil.utils.support.Pair;
 import net.maxsmr.copyutil.utils.Predicate;
 import net.maxsmr.copyutil.utils.StreamUtils;
 import net.maxsmr.copyutil.utils.TextUtils;
@@ -166,9 +166,10 @@ public class CopyUtil {
         return map != null && Predicate.Methods.contains(map.keySet(), element -> element != null && CompareUtils.objectsEqual(element.first, sourceFile));
     }
 
+    // TODO draw copy progress
     public static void main(String args[]) {
 
-        logger.i(System.getProperty(lineSeparator) + CopyUtil.class.getSimpleName() + ", version: 1.0.3.1"); // FIXME
+        logger.i(System.getProperty(lineSeparator) + CopyUtil.class.getSimpleName() + ", version: 1.0.3.3"); // FIXME
 
         if (args == null || args.length == 0) {
             throw new IllegalArgumentException("Args not specified!");
